@@ -85,7 +85,7 @@ Running
 
 ```bash
 find "./tests/input/" -type f -name '*.pdb' \
-| ../vorochipmunk \
+| ./vorochipmunk \
   --input _list \
   --processors 4 \
 | column -t

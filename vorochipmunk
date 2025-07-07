@@ -97,6 +97,7 @@ OUTPUT_TABLE_FILE="_stdout"
 MAX_PROCESSORS="1"
 STDIN_FILE="_stream"
 RUN_FASPR=""
+BLANKET_TYPES_FILE=""
 INPUT_IS_SCRIPT="false"
 AS_ASSEMBLY="false"
 DETAILED_MODE="false"
@@ -142,6 +143,10 @@ do
 		;;
 	--run-faspr)
 		RUN_FASPR="$OPTARG"
+		shift
+		;;
+	--blanket-types-file)
+		BLANKET_TYPES_FILE="$OPTARG"
 		shift
 		;;
 	--input-is-script)
@@ -360,6 +365,7 @@ common_params.run_faspr='$RUN_FASPR';
 common_params.output_table_file='$OUTPUT_TABLE_FILE';
 common_params.detailed_mode='$DETAILED_MODE';
 common_params.blanket_mode='$AKBPSBANKET_MODE';
+common_params.blanket_types_file='$BLANKET_TYPES_FILE';
 var input_info_array=[];
 EOF
 
@@ -430,8 +436,11 @@ voronota_assert_full_success("Failed to restrict input atoms by the input query"
 
 if(params.blanket_mode=="true")
 {
-	voronota_restrict_atoms("-use", "[-protein] or [-nucleic]");
-	voronota_assert_full_success("Failed to restrict input atoms to protein or nucleic acids only");
+	if(params.blanket_types_file=="")
+	{
+		voronota_restrict_atoms("-use", "[-protein] or [-nucleic]");
+		voronota_assert_full_success("Failed to restrict input atoms to protein or nucleic acids only");
+	}
 }
 else
 {
@@ -523,6 +532,12 @@ voronota_setup_defaults("-no-load-voromqa-potentials", "-no-load-alt-voromqa-pot
 
 voronota_setup_akbps_layered("-potentials", common_params.akbps_layered_lib, "-summing-weights", common_params.akbps_summing_weights);
 voronota_assert_full_success("Failed to setup area KBPs-Layered");
+
+if(common_params.blanket_mode=="true" && common_params.blanket_types_file!="")
+{
+	voronota_setup_chemistry_annotating("-more-atom-types-file", common_params.blanket_types_file);
+	voronota_assert_full_success("Failed to setup custom blanket atom types");
+}
 
 var full_summary_table="";
 

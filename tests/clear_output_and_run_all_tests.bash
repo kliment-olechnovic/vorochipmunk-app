@@ -16,6 +16,14 @@ find "./input/" -type f -name '*.pdb' \
 
 find "./input/" -type f -name '*.pdb' \
 | ../vorochipmunk \
+  --akbps-layered-lib "../tools/akbps_blanket_config_bundle.tar.gz" \
+  --input _list \
+  --processors 4 \
+| column -t \
+> "./output/all_global_scores_blanket.txt"
+
+find "./input/" -type f -name '*.pdb' \
+| ../vorochipmunk \
   --input _list \
   --processors 4 \
   --detailed \

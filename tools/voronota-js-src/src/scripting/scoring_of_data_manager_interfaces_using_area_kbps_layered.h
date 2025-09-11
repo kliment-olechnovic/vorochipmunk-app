@@ -1,6 +1,14 @@
 #ifndef SCRIPTING_SCORING_OF_DATA_MANAGER_INTERFACES_USING_AREA_KBPS_LAYERED_H_
 #define SCRIPTING_SCORING_OF_DATA_MANAGER_INTERFACES_USING_AREA_KBPS_LAYERED_H_
 
+#include "../compatability/tr1_usage.h"
+
+#if USE_TR1 > 0
+#include <tr1/unordered_map>
+#else
+#include <unordered_map>
+#endif
+
 #include "../common/contacts_scoring_utilities.h"
 
 #include "io_selectors.h"
@@ -13,6 +21,12 @@ namespace voronota
 namespace scripting
 {
 
+#if USE_TR1 > 0
+typedef std::tr1::unordered_map< common::ChainResidueAtomDescriptorsPair, std::vector<double>, common::ChainResidueAtomDescriptorsPair::HashFunctor > MapOfCRADPairValues;
+#else
+typedef std::unordered_map< common::ChainResidueAtomDescriptorsPair, std::vector<double>, common::ChainResidueAtomDescriptorsPair::HashFunctor > MapOfCRADPairValues;
+#endif
+
 class ScoringOfDataManagerInterfacesUsingAreaKBPsLayered
 {
 public:
@@ -20,7 +34,7 @@ public:
 	{
 	public:
 		std::vector<std::string> kbp_names;
-		std::map< std::string, std::map< common::ChainResidueAtomDescriptorsPair, std::vector<double> > > layers_kbp_coeffs;
+		std::map< std::string, MapOfCRADPairValues > layers_kbp_coeffs;
 		std::map<std::string, double> summing_weights;
 		bool has_primitive_chemistry_types;
 		bool has_coarse_chemistry_types;
@@ -63,7 +77,7 @@ public:
 			}
 
 			std::vector<std::string> raw_kbp_names;
-			std::map< std::string, std::map< common::ChainResidueAtomDescriptorsPair, std::vector<double> > > raw_layers_kbp_coeffs;
+			std::map< std::string, MapOfCRADPairValues > raw_layers_kbp_coeffs;
 			bool raw_has_primitive_chemistry_types=false;
 			bool raw_has_coarse_chemistry_types=false;
 
@@ -181,11 +195,11 @@ public:
 			std::vector<double> score_values(configuration.kbp_names.size(), 0.0);
 			double known_area=0.0;
 
-			for(std::map< std::string, std::map< common::ChainResidueAtomDescriptorsPair, std::vector<double> > >::const_iterator layer_it=configuration.layers_kbp_coeffs.begin();layer_it!=configuration.layers_kbp_coeffs.end();++layer_it)
+			for(typename std::map< std::string, MapOfCRADPairValues >::const_iterator layer_it=configuration.layers_kbp_coeffs.begin();layer_it!=configuration.layers_kbp_coeffs.end();++layer_it)
 			{
 				const std::string& layer=layer_it->first;
-				const std::map< common::ChainResidueAtomDescriptorsPair, std::vector<double> >& coeffs=layer_it->second;
-				std::map< common::ChainResidueAtomDescriptorsPair, std::vector<double> >::const_iterator kbp_it=coeffs.find(crads);
+				const MapOfCRADPairValues& coeffs=layer_it->second;
+				typename MapOfCRADPairValues::const_iterator kbp_it=coeffs.find(crads);
 				if(configuration.has_primitive_chemistry_types && kbp_it==coeffs.end())
 				{
 					common::ChainResidueAtomDescriptor alt_crad_a;
@@ -320,7 +334,7 @@ public:
 		construct_result(Configuration::get_default_configuration(), params, data_manager, result);
 	}
 
-	static bool read_kbps_names_and_coeffs(std::istream& input_stream, std::vector<std::string>& kbp_names, std::map< std::string, std::map< common::ChainResidueAtomDescriptorsPair, std::vector<double> > >& layers_kbp_coeffs, bool& has_primitive_chemistry_types, bool& has_coarse_chemistry_types)
+	static bool read_kbps_names_and_coeffs(std::istream& input_stream, std::vector<std::string>& kbp_names, std::map< std::string, MapOfCRADPairValues >& layers_kbp_coeffs, bool& has_primitive_chemistry_types, bool& has_coarse_chemistry_types)
 	{
 		std::vector<std::string> header;
 
@@ -354,47 +368,75 @@ public:
 			std::string layer;
 			std::pair< common::ChainResidueAtomDescriptorsPair, std::vector<double> > iname_coeffs;
 			iname_coeffs.second.resize(kbp_names.size(), 0.0);
-			input_stream >> std::ws;
-			while(input_stream.good())
+
+			std::string line;
+			line.reserve(1000);
+
+			while(std::getline(input_stream, line))
 			{
-				input_stream >> iname_coeffs.first.a.resName;
-				if(input_stream.fail())
+				if(!line.empty())
 				{
-					return false;
-				}
-				input_stream >> iname_coeffs.first.a.name;
-				if(input_stream.fail())
-				{
-					return false;
-				}
-				input_stream >> iname_coeffs.first.b.resName;
-				if(input_stream.fail())
-				{
-					return false;
-				}
-				input_stream >> iname_coeffs.first.b.name;
-				if(input_stream.fail())
-				{
-					return false;
-				}
-				input_stream >> layer;
-				if(input_stream.fail())
-				{
-					return false;
-				}
-				for(std::size_t i=0;i<iname_coeffs.second.size();i++)
-				{
-					input_stream >> iname_coeffs.second[i];
-					if(input_stream.fail())
+					const char* s=line.c_str();
+					const char* p=s;
+					const char* const e=s+line.size();
+
+					while(p<e && (*p=='\t' || *p==' ' || *p=='\r'))
 					{
-						return false;
+						++p;
 					}
+
+					std::string* dsts[5]={
+						&iname_coeffs.first.a.resName,
+						&iname_coeffs.first.a.name,
+						&iname_coeffs.first.b.resName,
+						&iname_coeffs.first.b.name,
+						&layer
+					};
+
+					for(int t=0;t<5;t++)
+					{
+						const char* q=p;
+						while(q<e && (*q!='\t' && *q!=' ' && *q!='\r'))
+						{
+							++q;
+						};
+						if(q==p)
+						{
+							return false;
+						}
+						dsts[t]->assign(p, static_cast<std::size_t>(q-p));
+						p=q;
+						while(p<e && (*p=='\t' || *p==' ' || *p=='\r'))
+						{
+							++p;
+						}
+					}
+
+					for(std::size_t i=0;i<iname_coeffs.second.size();i++)
+					{
+						if(p>=e)
+						{
+							return false;
+						}
+						char* endp=0;
+						double v=std::strtod(p, &endp);
+						if(endp==p)
+						{
+							return false;
+						}
+						iname_coeffs.second[i]=v;
+						p=endp;
+						while(p<e && (*p=='\t' || *p==' ' || *p=='\r'))
+						{
+							++p;
+						}
+					}
+
+					MapOfCRADPairValues& layer_map=layers_kbp_coeffs[layer];
+					layer_map.insert(layer_map.end(), iname_coeffs);
+					has_primitive_chemistry_types=(has_primitive_chemistry_types || iname_coeffs.first.a.resName=="ANY" || iname_coeffs.first.b.resName=="ANY");
+					has_coarse_chemistry_types=(has_coarse_chemistry_types || iname_coeffs.first.a.name=="ANY" || iname_coeffs.first.b.name=="ANY");
 				}
-				std::map< common::ChainResidueAtomDescriptorsPair, std::vector<double> >& layer_map=layers_kbp_coeffs[layer];
-				layer_map.insert(layer_map.end(), iname_coeffs);
-				has_primitive_chemistry_types=(has_primitive_chemistry_types || iname_coeffs.first.a.resName=="ANY" || iname_coeffs.first.b.resName=="ANY");
-				has_coarse_chemistry_types=(has_coarse_chemistry_types || iname_coeffs.first.a.name=="ANY" || iname_coeffs.first.b.name=="ANY");
-				input_stream >> std::ws;
 			}
 		}
 

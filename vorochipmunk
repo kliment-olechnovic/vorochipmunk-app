@@ -88,8 +88,8 @@ export PATH="${SCRIPTDIR}/tools:${PATH}"
 
 command -v voronota-js &> /dev/null || { echo >&2 "Error: 'voronota-js' executable not in binaries path"; exit 1; }
 
-AKBPSLAYEREDLIB="${SCRIPTDIR}/tools/akbps_protein_protein_config_bundle.tar.gz"
-AKBPSLAYEREDLIBWEIGHTS=""
+AKBPSLAYEREDLIB="${SCRIPTDIR}/tools/akbps_protein_protein_config_bundle/akbps_config_bundle/akbps_layered_lib"
+AKBPSLAYEREDLIBWEIGHTS="${SCRIPTDIR}/tools/akbps_protein_protein_config_bundle/akbps_config_bundle/akbps_layered_lib_weights"
 INFILE=""
 RESTRICT_INPUT="[]"
 SUBSELECT_CONTACTS="[]"
@@ -111,6 +111,7 @@ do
 	case $OPTION in
 	--akbps-layered-lib)
 		AKBPSLAYEREDLIB="$OPTARG"
+		AKBPSLAYEREDLIBWEIGHTS=""
 		shift
 		;;
 	--akbps-layered-lib-weights)

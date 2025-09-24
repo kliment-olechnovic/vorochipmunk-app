@@ -29,13 +29,5 @@ find "./input/" -type f -name '*.pdb' \
   --detailed \
   --output-table-file "./output/all_global_scores_detailed.txt"
 
-find "./output/" -type f -name '*global_scores*' \
-| grep -v "_detailed" \
-| sort \
-| while read -r RESULTFILE
-do
-	echo "$RESULTFILE"
-	cat "$RESULTFILE" | sed 's/^/    /'
-	echo
-done
+git status -s ./output/
 

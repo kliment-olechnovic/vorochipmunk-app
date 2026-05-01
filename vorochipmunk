@@ -74,7 +74,7 @@ function substitute_id_in_filename
 
 ################################################################################
 
-SCRIPTDIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+VOROCHIPMUNK_ROOT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 readonly ZEROARG=$0
 ALLARGS=("$@")
@@ -84,12 +84,8 @@ then
 	print_help_and_exit
 fi
 
-export PATH="${SCRIPTDIR}/tools:${PATH}"
-
-command -v voronota-js &> /dev/null || { echo >&2 "Error: 'voronota-js' executable not in binaries path"; exit 1; }
-
-AKBPSLAYEREDLIB="${SCRIPTDIR}/tools/akbps_protein_protein_config_bundle/akbps_config_bundle/akbps_layered_lib"
-AKBPSLAYEREDLIBWEIGHTS="${SCRIPTDIR}/tools/akbps_protein_protein_config_bundle/akbps_config_bundle/akbps_layered_lib_weights"
+AKBPSLAYEREDLIB="${VOROCHIPMUNK_ROOT_DIR}/tools/akbps_protein_protein_config_bundle/akbps_config_bundle/akbps_layered_lib"
+AKBPSLAYEREDLIBWEIGHTS="${VOROCHIPMUNK_ROOT_DIR}/tools/akbps_protein_protein_config_bundle/akbps_config_bundle/akbps_layered_lib_weights"
 INFILE=""
 RESTRICT_INPUT="[]"
 SUBSELECT_CONTACTS="[]"
@@ -159,6 +155,10 @@ do
 	--detailed)
 		DETAILED_MODE="true"
 		;;
+	--vorochipmunk-root-dir)
+		VOROCHIPMUNK_ROOT_DIR="$OPTARG"
+		shift
+		;;
 	-h|--help)
 		HELP_MODE="true"
 		;;
@@ -173,6 +173,24 @@ if [ "$HELP_MODE" == "true" ]
 then
 	print_help_and_exit
 fi
+
+################################################################################
+
+if [ ! -s "${VOROCHIPMUNK_ROOT_DIR}/vorochipmunk" ] || [ ! -s "${VOROCHIPMUNK_ROOT_DIR}/tools/voronota-js" ]
+then
+	if [ -n "$SLURM_JOB_ID" ]
+	then
+		VOROCHIPMUNK_ROOT_DIR="$(dirname -- "$(squeue -j ${SLURM_JOB_ID} -h -O Command)")"
+	fi
+fi
+
+if [ ! -s "${VOROCHIPMUNK_ROOT_DIR}/vorochipmunk" ] || [ ! -s "${VOROCHIPMUNK_ROOT_DIR}/tools/voronota-js" ]
+then
+	echo >&2 "Error: cannot detect the VoroChipmunk software root directory, provide it with the --vorochipmunk-root-dir oprion"
+	exit 1
+fi
+
+################################################################################
 
 if [ -z "$AKBPSLAYEREDLIB" ]
 then
@@ -306,9 +324,9 @@ then
 	| {
 		if [ "$DETAILED_MODE" == "true" ]
 		then
-			voronota-js --no-setup-defaults "js:voronota_tournament_sort('-input-file _stdin -output-file _stdout -columns iface_area -multipliers 1 -tolerances 0.0');"
+			${VOROCHIPMUNK_ROOT_DIR}/tools/voronota-js --no-setup-defaults "js:voronota_tournament_sort('-input-file _stdin -output-file _stdout -columns iface_area -multipliers 1 -tolerances 0.0');"
 		else
-			voronota-js --no-setup-defaults "js:voronota_tournament_sort('-input-file _stdin -output-file _stdout -columns iface_pseudoenergy -multipliers -1 -tolerances 0.0');"
+			${VOROCHIPMUNK_ROOT_DIR}/tools/voronota-js --no-setup-defaults "js:voronota_tournament_sort('-input-file _stdin -output-file _stdout -columns iface_pseudoenergy -multipliers -1 -tolerances 0.0');"
 		fi
 	} \
 	> "$TMPLDIR/full_output_table"
@@ -581,5 +599,5 @@ voronota_assert_full_success("Failed to output sorted scores table");
 EOF
 
 } \
-| voronota-js --no-setup-defaults
+| ${VOROCHIPMUNK_ROOT_DIR}/tools/voronota-js --no-setup-defaults
 

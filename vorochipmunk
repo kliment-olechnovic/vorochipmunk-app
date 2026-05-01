@@ -84,8 +84,8 @@ then
 	print_help_and_exit
 fi
 
-AKBPSLAYEREDLIB="${VOROCHIPMUNK_ROOT_DIR}/tools/akbps_protein_protein_config_bundle/akbps_config_bundle/akbps_layered_lib"
-AKBPSLAYEREDLIBWEIGHTS="${VOROCHIPMUNK_ROOT_DIR}/tools/akbps_protein_protein_config_bundle/akbps_config_bundle/akbps_layered_lib_weights"
+AKBPSLAYEREDLIB=""
+AKBPSLAYEREDLIBWEIGHTS=""
 INFILE=""
 RESTRICT_INPUT="[]"
 SUBSELECT_CONTACTS="[]"
@@ -191,6 +191,12 @@ then
 fi
 
 ################################################################################
+
+if [ -z "$AKBPSLAYEREDLIB" ] && [ -z "$AKBPSLAYEREDLIBWEIGHTS" ]
+then
+	AKBPSLAYEREDLIB="${VOROCHIPMUNK_ROOT_DIR}/tools/akbps_protein_protein_config_bundle/akbps_config_bundle/akbps_layered_lib"
+	AKBPSLAYEREDLIBWEIGHTS="${VOROCHIPMUNK_ROOT_DIR}/tools/akbps_protein_protein_config_bundle/akbps_config_bundle/akbps_layered_lib_weights"
+fi
 
 if [ -z "$AKBPSLAYEREDLIB" ]
 then
